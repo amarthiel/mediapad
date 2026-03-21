@@ -220,7 +220,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .fav-item-sm{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0ede8;cursor:pointer;transition:opacity 0.13s;}
 .fav-item-sm:last-child{border-bottom:none;}
 .fav-item-sm:hover{opacity:0.7;}
-.fav-item-sm-title{font-size:12px;font-weight:500;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.fav-item-sm-title{font-size:12px;font-weight:500;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;display:block;}
 .fav-stars-sm{font-size:10px;color:#f59e0b;flex-shrink:0;letter-spacing:1px;}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -334,6 +334,12 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
       <option value="signed">Signed</option>
       <option value="gift">Gifts</option>
     </select>
+    <select class="filter-select" id="filter-sort" onchange="renderList()">
+      <option value="added">Date added</option>
+      <option value="year">Release year</option>
+      <option value="title">Title A→Z</option>
+      <option value="rating">Rating</option>
+    </select>
   </div>
   <div class="section-label" id="section-label">Books</div>
   <div id="entry-list"></div>
@@ -444,7 +450,7 @@ function getIcon(tab){ return TABS[tab].icon; }
 function getFiltered(){
   const status = $('filter-status').value;
   const fav = $('filter-fav').value;
-  return data[currentTab].filter(e=>{
+  const filtered = data[currentTab].filter(e=>{
     if(status!=='all'&&e.progress_status!==status)return false;
     if(fav==='fav'&&!e.favourite)return false;
     if(fav==='signed'&&!e.signed)return false;
@@ -456,6 +462,11 @@ function getFiltered(){
     }
     return true;
   });
+  const sort=($('filter-sort')||{value:'added'}).value;
+  if(sort==='title') filtered.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(sort==='year') filtered.sort((a,b)=>((b.publication_year||b.release_year)||0)-((a.publication_year||a.release_year)||0));
+  else if(sort==='rating') filtered.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  return filtered;
 }
 
 // ── Quote of the day ──────────────────────────────────────────────────────
@@ -750,6 +761,7 @@ function switchTab(tab, btn){
   btn.classList.add('active');
   $('filter-status').value='all';
   $('filter-fav').value='all';
+  $('filter-sort').value='added';
   $('search-input').value='';
   searchQuery='';
   showListView();
@@ -813,7 +825,7 @@ function renderDetail(e){
       <div class="detail-icon">${TABS[tab].icon}</div>
       <div class="detail-heading">
         <div class="detail-name">${e.title}</div>
-        <div class="detail-sub">${[e.author||e.director||e.developer||'', e.publication_year||e.release_year||''].filter(Boolean).join(' · ')}</div>
+        <div class="detail-sub">${[e.author||e.director||e.developer||(isSeries&&e.platforms?.length?e.platforms[0]:''), e.publication_year||e.release_year||''].filter(Boolean).join(' · ')}</div>
         <div class="detail-badges">
           ${badgeHTML(e.progress_status)}
           ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral">${f.format} · ${f.library_status}</span>`).join(''):''}
@@ -1094,13 +1106,31 @@ function openModal(mode, entry){
     ${formatsHTML}
     <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
     <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="fantasy, drama…"/></div>
-    ${isSeries||isGame||isMovie?`<div class="field"><label>Platforms</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="${isMovie?'Netflix, MUBI, Cinema…':'PC, PS5, Switch…'}"/></div>`:''}
+    ${isSeries||isGame||isMovie?`<div class="field"><label>Platforms</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="${isMovie?'Netflix, MUBI, Cinema…':isSeries?'Netflix, HBO, Apple TV+…':'PC, PS5, Switch…'}"/></div>`:''}
     ${isBook||isGame?`
     <div class="field-row">
       <div class="field"><label>Started</label><input id="f-started" type="date" value="${vd('started')}"/></div>
       <div class="field"><label>Finished</label><input id="f-finished" type="date" value="${vd('finished')}"/></div>
     </div>`:''}
     ${isMovie?`<div class="field"><label>Watch date</label><input id="f-watchdate" type="date" value="${esc(v('watch_date',''))}"/></div>`:''}
+    ${isSeries?`
+    <div class="field">
+      <label>Seasons</label>
+      <div id="seasons-list">
+        ${(e.seasons||[]).map((s,i)=>`
+        <div class="season-edit-row" style="display:grid;grid-template-columns:60px 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;">
+          <div style="background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;color:#1a1a1a;text-align:center;font-weight:600;">S${s.season}</div>
+          <select class="ssn-status" style="background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="completed"${s.status==='completed'?' selected':''}>Completed</option>
+            <option value="in_progress"${s.status==='in_progress'?' selected':''}>In progress</option>
+            <option value="skipped"${s.status==='skipped'?' selected':''}>Skipped</option>
+          </select>
+          <input type="date" class="ssn-date" value="${s.watch_date||''}" style="background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;"/>
+          <button onclick="removeSeasonRow(this)" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:0 4px;line-height:1;">✕</button>
+        </div>`).join('')}
+      </div>
+      <button onclick="addSeasonRow()" style="background:transparent;border:1.5px dashed #d5d3ce;border-radius:9px;padding:6px 12px;font-size:12px;color:#bbb;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;width:100%;margin-top:2px;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='#1a1a1a';this.style.color='#1a1a1a'" onmouseout="this.style.borderColor='#d5d3ce';this.style.color='#bbb'">+ Add season</button>
+    </div>`:''}
     <div class="field">
       <label>Rating</label>
       <div class="star-picker" id="star-picker">
@@ -1137,6 +1167,46 @@ function openModal(mode, entry){
     $('modal-body').innerHTML = `<p style="color:#c0392b;font-size:13px;margin-bottom:16px;">Something went wrong loading the form. Error: ${err.message}</p><div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Close</button></div>`;
   }
 }
+
+function addSeasonRow(){
+  const list=$('seasons-list');
+  const existing=list.querySelectorAll('.season-edit-row').length;
+  const div=document.createElement('div');
+  div.className='season-edit-row';
+  div.style.cssText='display:grid;grid-template-columns:60px 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;';
+  div.innerHTML=`
+    <div style="background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;color:#1a1a1a;text-align:center;font-weight:600;">S${existing+1}</div>
+    <select class="ssn-status" style="background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+      <option value="completed">Completed</option>
+      <option value="in_progress">In progress</option>
+      <option value="skipped">Skipped</option>
+    </select>
+    <input type="date" class="ssn-date" style="background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;"/>
+    <button onclick="removeSeasonRow(this)" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:0 4px;line-height:1;">✕</button>`;
+  list.appendChild(div);
+}
+
+function removeSeasonRow(btn){
+  btn.closest('.season-edit-row').remove();
+  // Renumber season labels
+  document.querySelectorAll('#seasons-list .season-edit-row').forEach((row,i)=>{
+    row.querySelector('div').textContent=`S${i+1}`;
+  });
+}
+
+function readSeasons(existing){
+  const rows=document.querySelectorAll('#seasons-list .season-edit-row');
+  return Array.from(rows).map((row,i)=>{
+    const oldSeason=existing?.[i]||{};
+    return {
+      season:i+1,
+      status:row.querySelector('.ssn-status').value,
+      watch_date:row.querySelector('.ssn-date').value,
+      episodes:oldSeason.episodes||[],
+    };
+  });
+}
+
 
 function addFormatRow(){
   const tab=currentTab;
@@ -1228,7 +1298,7 @@ function confirmModal(){
     base.format=$('f-format')?$('f-format').value:'Digital';
     base.library_status=$('f-library').value;
     base.platforms=platforms;
-    base.seasons=editTarget?.seasons||[];
+    base.seasons=$('seasons-list')?readSeasons(editTarget?.seasons):editTarget?.seasons||[];
     base.rewatch=!!(editTarget?.rewatch);
     base.reruns=editTarget?.reruns||[];
   }
