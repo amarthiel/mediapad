@@ -1,12 +1,13 @@
 const CACHE = 'mediapad-v1';
+const BASE = '/mediapad';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/favicon-32.png',
-  '/favicon-16.png',
-  '/manifest.json',
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/icon-192.png',
+  BASE + '/icon-512.png',
+  BASE + '/favicon-32.png',
+  BASE + '/favicon-16.png',
+  BASE + '/manifest.json',
 ];
 
 self.addEventListener('install', e => {
