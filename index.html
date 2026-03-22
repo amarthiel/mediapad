@@ -223,8 +223,25 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .fav-item-sm-title{font-size:12px;font-weight:500;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;display:block;}
 .fav-stars-sm{font-size:10px;color:#f59e0b;flex-shrink:0;letter-spacing:1px;}
 
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+/* ── Mobile bottom nav ── */
+#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e6e1;padding:8px 8px 20px;z-index:100;align-items:center;justify-content:space-around;}
+.mob-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:none;cursor:pointer;padding:4px 0;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;color:#aaa;transition:color 0.15s;}
+.mob-nav-btn.active{color:#ad1457;}
+.mob-nav-icon{font-size:22px;}
+#mob-btn-add{background:#1a1a1a;color:#fff;width:50px;height:50px;border-radius:50%;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.25);margin-top:-18px;transition:transform 0.15s;}
+#mob-btn-add:active{transform:scale(0.93);}
+
+@media(max-width:700px){
+  #nav{display:none;}
+  #mobile-nav{display:flex;}
+  #main,#home-view,#detail-view{padding-bottom:100px;}
+  #header{padding:0 14px;}
+  #search-input{width:130px;}
+  body{overflow-x:hidden;}
+  #header-right .btn-secondary{display:none;}
+  #modal-overlay{align-items:flex-end;padding:0;}
+  #modal-box{border-radius:18px 18px 0 0;max-height:88vh;padding:20px 18px 32px;}
+}
 </style>
 </head>
 <body>
@@ -236,7 +253,27 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
   <button id="btn-install-dismiss" style="background:transparent;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;">✕</button>
 </div>
 
-<div id="header">
+<!-- Mobile bottom nav -->
+<div id="mobile-nav">
+  <button class="mob-nav-btn active" id="mob-home" onclick="showHome(this)">
+    <span class="mob-nav-icon">🏠</span><span>Home</span>
+  </button>
+  <button class="mob-nav-btn" id="mob-books" onclick="mobileSwitchTab('books',this)">
+    <span class="mob-nav-icon">📖</span><span>Books</span>
+  </button>
+  <button id="mob-btn-add" onclick="openModal('add')">+</button>
+  <button class="mob-nav-btn" id="mob-movies" onclick="mobileSwitchTab('movies',this)">
+    <span class="mob-nav-icon">🎬</span><span>Movies</span>
+  </button>
+  <button class="mob-nav-btn" id="mob-series" onclick="mobileSwitchTab('series',this)">
+    <span class="mob-nav-icon">📺</span><span>Series</span>
+  </button>
+  <button class="mob-nav-btn" id="mob-games" onclick="mobileSwitchTab('games',this)">
+    <span class="mob-nav-icon">🎮</span><span>Games</span>
+  </button>
+</div>
+
+
   <div id="header-left">
     <span id="logo">Mediapad</span>
     <div id="nav">
@@ -697,7 +734,9 @@ function showHome(btn){
   $('main').style.display='none';
   $('detail-view').style.display='none';
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  (btn||$('nav-home')).classList.add('active');
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  (btn||$('nav-home'))?.classList.add('active');
+  $('mob-home')?.classList.add('active');
   $('search-input').style.display='none';
   renderDashboard();
 }
@@ -754,11 +793,30 @@ function renderList(){
   }).join('');
 }
 
-// ── Tab switch ────────────────────────────────────────────────────────────
+function mobileSwitchTab(tab, btn){
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  // Also sync desktop nav
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  currentTab=tab;
+  $('filter-status').value='all';
+  $('filter-fav').value='all';
+  $('filter-sort').value='added';
+  $('search-input').value='';
+  searchQuery='';
+  showListView();
+  renderList();
+}
+
+
 function switchTab(tab, btn){
   currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  const mobBtn=$('mob-'+tab);
+  if(mobBtn) mobBtn.classList.add('active');
   $('filter-status').value='all';
   $('filter-fav').value='all';
   $('filter-sort').value='added';
