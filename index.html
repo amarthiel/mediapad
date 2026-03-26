@@ -231,7 +231,12 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 #mob-btn-add{background:#1a1a1a;color:#fff;width:50px;height:50px;border-radius:50%;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.25);margin-top:-18px;transition:transform 0.15s;}
 #mob-btn-add:active{transform:scale(0.93);}
 
-@media(max-width:700px){
+.export-wrap{position:relative;display:inline-block;}
+.export-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #e8e6e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.1);overflow:hidden;min-width:140px;z-index:100;}
+.export-menu.open{display:block;animation:fadeIn 0.12s ease;}
+.export-menu button{display:block;width:100%;text-align:left;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:#1a1a1a;background:transparent;border:none;cursor:pointer;transition:background 0.1s;}
+.export-menu button:hover{background:#f8f7f4;}
+.export-menu button+button{border-top:1px solid #f0ede8;}
   #nav{display:none;}
   #mobile-nav{display:flex;}
   #main,#home-view,#detail-view{padding-bottom:100px;}
@@ -286,7 +291,13 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
   </div>
   <div id="header-right">
     <input type="text" id="search-input" placeholder="Search…"/>
-    <button class="btn-secondary" id="btn-export">⬆ Export</button>
+    <div class="export-wrap" id="export-wrap">
+      <button class="btn-secondary" id="btn-export">⬆ Export</button>
+      <div class="export-menu" id="export-menu">
+        <button onclick="exportJSON()">JSON</button>
+        <button onclick="exportCSV()">CSV (Excel)</button>
+      </div>
+    </div>
     <label class="btn-secondary">⬇ Import<input type="file" id="import-file" accept=".json" style="display:none;"/></label>
     <button class="btn-primary" id="btn-add">+ Add</button>
   </div>
@@ -1386,13 +1397,102 @@ function confirmModal(){
 }
 
 // ── Export / Import ───────────────────────────────────────────────────────
-function exportData(){
+function toggleExportMenu(){
+  $('export-menu').classList.toggle('open');
+}
+
+function exportJSON(){
+  $('export-menu').classList.remove('open');
   const json=JSON.stringify(data,null,2);
   const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download='mediapad-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
-  URL.revokeObjectURL(url);showToast('Exported! 📦');
+  URL.revokeObjectURL(url);showToast('Exported as JSON 📦');
+}
+
+function exportCSV(){
+  $('export-menu').classList.remove('open');
+  const date=new Date().toISOString().slice(0,10);
+  const zip=[];
+
+  function toCSV(rows, headers){
+    const esc=v=>'"'+String(v||'').replace(/"/g,'""')+'"';
+    return [headers.map(esc).join(','), ...rows.map(r=>headers.map(h=>esc(r[h]||'')).join(','))].join('\n');
+  }
+
+  // Books
+  const books=data.books.map(e=>({
+    Title:e.title, Author:e.author||'', 'Publication year':e.publication_year||'',
+    Formats:(e.formats||[]).map(f=>f.format+' ('+f.library_status+')').join('; '),
+    Language:(e.language||[]).join('; '), Genres:(e.genres||[]).join('; '),
+    Status:STATUS_LABELS[e.progress_status]||e.progress_status,
+    Started:e.dates?.started||'', Finished:e.dates?.finished||'',
+    Rating:e.rating||'', Favourite:e.favourite?'Yes':'No',
+    Signed:e.signed?'Yes':'No', Gift:e.gift?'Yes':'No',
+    Review:e.review||'', Notes:e.notes||'',
+    Quotes:(e.quotes||[]).join(' | '),
+    Reruns:(e.reruns||[]).map((r,i)=>'#'+(i+1)+': '+r.started+(r.finished?' → '+r.finished:' (ongoing)')+(r.format?' ['+r.format+']':'')).join('; '),
+  }));
+
+  // Movies
+  const movies=data.movies.map(e=>({
+    Title:e.title, Director:e.director||'', 'Release year':e.release_year||'',
+    Format:e.format||'', Library:e.library_status||'',
+    Language:(e.language||[]).join('; '), Genres:(e.genres||[]).join('; '),
+    Platforms:(e.platforms||[]).join('; '),
+    Status:STATUS_LABELS[e.progress_status]||e.progress_status,
+    'Watch date':e.watch_date||'', Rating:e.rating||'',
+    Favourite:e.favourite?'Yes':'No', Review:e.review||'', Notes:e.notes||'',
+    Quotes:(e.quotes||[]).join(' | '),
+  }));
+
+  // Series
+  const series=data.series.map(e=>({
+    Title:e.title, 'Release year':e.release_year||'',
+    Format:e.format||'', Library:e.library_status||'',
+    Language:(e.language||[]).join('; '), Genres:(e.genres||[]).join('; '),
+    Platforms:(e.platforms||[]).join('; '),
+    Status:STATUS_LABELS[e.progress_status]||e.progress_status,
+    Seasons:(e.seasons||[]).map(s=>'S'+s.season+' '+s.status+(s.watch_date?' ('+s.watch_date+')':'')).join('; '),
+    Rating:e.rating||'', Favourite:e.favourite?'Yes':'No',
+    Review:e.review||'', Notes:e.notes||'',
+    Quotes:(e.quotes||[]).join(' | '),
+  }));
+
+  // Games
+  const games=data.games.map(e=>({
+    Title:e.title, Developer:e.developer||'', 'Release year':e.release_year||'',
+    Formats:(e.formats||[]).map(f=>f.format+' ('+f.library_status+')').join('; '),
+    Genres:(e.genres||[]).join('; '), Platforms:(e.platforms||[]).join('; '),
+    Status:STATUS_LABELS[e.progress_status]||e.progress_status,
+    Started:e.dates?.started||'', Finished:e.dates?.finished||'',
+    Rating:e.rating||'', Favourite:e.favourite?'Yes':'No', Gift:e.gift?'Yes':'No',
+    Review:e.review||'', Notes:e.notes||'',
+    Quotes:(e.quotes||[]).join(' | '),
+  }));
+
+  const bookHeaders=['Title','Author','Publication year','Formats','Language','Genres','Status','Started','Finished','Rating','Favourite','Signed','Gift','Review','Notes','Quotes','Reruns'];
+  const movieHeaders=['Title','Director','Release year','Format','Library','Language','Genres','Platforms','Status','Watch date','Rating','Favourite','Review','Notes','Quotes'];
+  const seriesHeaders=['Title','Release year','Format','Library','Language','Genres','Platforms','Status','Seasons','Rating','Favourite','Review','Notes','Quotes'];
+  const gameHeaders=['Title','Developer','Release year','Formats','Genres','Platforms','Status','Started','Finished','Rating','Favourite','Gift','Review','Notes','Quotes'];
+
+  // Download each as separate CSV
+  const files=[
+    {name:'books', data:books, headers:bookHeaders},
+    {name:'movies', data:movies, headers:movieHeaders},
+    {name:'series', data:series, headers:seriesHeaders},
+    {name:'games', data:games, headers:gameHeaders},
+  ];
+  files.forEach(f=>{
+    const csv=toCSV(f.data, f.headers);
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='mediapad-'+f.name+'-'+date+'.csv';a.click();
+    URL.revokeObjectURL(url);
+  });
+  showToast('Exported as CSV 📊');
 }
 function importData(file){
   if(!file)return;
@@ -1418,7 +1518,8 @@ $('logo').addEventListener('click',()=>showHome());
 $('detail-back').addEventListener('click',()=>{ showListView(); renderList(); });
 $('btn-add').addEventListener('click',()=>openModal('add'));
 $('search-input').addEventListener('input',e=>{ searchQuery=e.target.value; renderList(); });
-$('btn-export').addEventListener('click',exportData);
+$('btn-export').addEventListener('click', e=>{ e.stopPropagation(); toggleExportMenu(); });
+document.addEventListener('click', e=>{ if(!$('export-wrap').contains(e.target)) $('export-menu').classList.remove('open'); });
 $('import-file').addEventListener('change',e=>{ importData(e.target.files[0]); e.target.value=''; });
 $('modal-overlay').addEventListener('click',e=>{ if(e.target===$('modal-overlay'))closeModal(); });
 
