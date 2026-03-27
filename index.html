@@ -992,6 +992,11 @@ function renderDetail(e){
           </div>
         </div>
         <div class="season-body${si===0&&hasEps?' open':''}">
+          ${s.rating||s.favourite||s.notes?`<div style="display:flex;align-items:center;gap:12px;padding:8px 0 10px;border-bottom:${hasEps?'1px solid #eeece8':'none'};margin-bottom:${hasEps?'8px':'0'};">
+            ${s.rating?`<span style="font-size:13px;color:#f59e0b;">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</span>`:''}
+            ${s.favourite?`<span style="color:#e91e8c;font-size:13px;">♥</span>`:''}
+            ${s.notes?`<span style="font-size:12px;color:#777;font-style:italic;">${s.notes}</span>`:''}
+          </div>`:''}
           ${hasEps?s.episodes.map(ep=>`
             <div class="ep-row">
               <span class="ep-num">E${String(ep.ep).padStart(2,'0')}</span>
@@ -1232,6 +1237,17 @@ function openModal(mode, entry){
             <input type="date" class="ssn-date" value="${s.watch_date||''}" style="background:#fff;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;"/>
             <button onclick="removeSeasonRow(this)" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:0 4px;line-height:1;">✕</button>
           </div>
+          <div style="padding:10px;background:#fff;border-top:1px solid #f0ede8;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div class="ssn-stars" style="display:flex;gap:4px;">
+                ${[1,2,3,4,5].map(n=>`<span class="ssn-star" data-n="${n}" onclick="setSsnRating(this,${n})" style="font-size:18px;cursor:pointer;color:${(s.rating||0)>=n?'#f59e0b':'#e8e6e1'};transition:color 0.1s;">★</span>`).join('')}
+              </div>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#888;cursor:pointer;font-family:'DM Sans',sans-serif;">
+                <input type="checkbox" class="ssn-fav" ${s.favourite?'checked':''} style="width:14px;height:14px;accent-color:#e91e8c;cursor:pointer;"/> Favourite
+              </label>
+            </div>
+            <textarea class="ssn-notes" placeholder="Notes on this season…" style="width:100%;background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;min-height:60px;line-height:1.5;">${esc(s.notes||'')}</textarea>
+          </div>
           <div class="ssn-eps-section" style="padding:8px 10px 10px;background:#fff;border-top:1px solid #f0ede8;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
               <span style="font-size:10px;font-weight:700;color:#bbb;letter-spacing:0.08em;text-transform:uppercase;">Episodes</span>
@@ -1287,6 +1303,13 @@ function openModal(mode, entry){
   }
 }
 
+function setSsnRating(star, n){
+  const stars=star.closest('.ssn-stars').querySelectorAll('.ssn-star');
+  const current=parseInt(star.closest('.ssn-stars').dataset.rating||0);
+  const newRating=current===n?0:n;
+  star.closest('.ssn-stars').dataset.rating=newRating;
+  stars.forEach(s=>s.style.color=parseInt(s.dataset.n)<=newRating?'#f59e0b':'#e8e6e1');
+}
 function addSeasonRow(){
   const list=$('seasons-list');
   const existing=list.querySelectorAll('.season-edit-row').length;
@@ -1304,6 +1327,17 @@ function addSeasonRow(){
       </select>
       <input type="date" class="ssn-date" style="background:#fff;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;"/>
       <button onclick="removeSeasonRow(this)" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:0 4px;line-height:1;">✕</button>
+    </div>
+    <div style="padding:10px;background:#fff;border-top:1px solid #f0ede8;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="ssn-stars" data-rating="0" style="display:flex;gap:4px;">
+          ${[1,2,3,4,5].map(n=>`<span class="ssn-star" data-n="${n}" onclick="setSsnRating(this,${n})" style="font-size:18px;cursor:pointer;color:#e8e6e1;transition:color 0.1s;">★</span>`).join('')}
+        </div>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#888;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          <input type="checkbox" class="ssn-fav" style="width:14px;height:14px;accent-color:#e91e8c;cursor:pointer;"/> Favourite
+        </label>
+      </div>
+      <textarea class="ssn-notes" placeholder="Notes on this season…" style="width:100%;background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;min-height:60px;line-height:1.5;box-sizing:border-box;"></textarea>
     </div>
     <div class="ssn-eps-section" style="padding:8px 10px 10px;background:#fff;border-top:1px solid #f0ede8;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -1347,10 +1381,15 @@ function readSeasons(existing){
       title:er.querySelector('.ep-title').value.trim(),
       date:er.querySelector('.ep-date').value,
     })).filter(ep=>ep.ep>0);
+    const ratingEl=row.querySelector('.ssn-stars');
+    const rating=ratingEl?parseInt(ratingEl.dataset.rating)||null:oldSeason.rating||null;
     return {
       season:i+1,
       status:row.querySelector('.ssn-status').value,
       watch_date:row.querySelector('.ssn-date').value,
+      rating,
+      favourite:row.querySelector('.ssn-fav')?.checked||false,
+      notes:row.querySelector('.ssn-notes')?.value.trim()||'',
       episodes,
     };
   });
