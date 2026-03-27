@@ -232,11 +232,13 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 #mob-btn-add:active{transform:scale(0.93);}
 
 .export-wrap{position:relative;display:inline-block;}
-.export-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #e8e6e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.1);overflow:hidden;min-width:140px;z-index:100;}
+.export-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #e8e6e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.1);overflow:hidden;min-width:140px;z-index:999;}
 .export-menu.open{display:block;animation:fadeIn 0.12s ease;}
 .export-menu button{display:block;width:100%;text-align:left;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:#1a1a1a;background:transparent;border:none;cursor:pointer;transition:background 0.1s;}
 .export-menu button:hover{background:#f8f7f4;}
 .export-menu button+button{border-top:1px solid #f0ede8;}
+
+@media(max-width:600px){
   #nav{display:none;}
   #mobile-nav{display:flex;}
   #main,#home-view,#detail-view{padding-bottom:100px;}
