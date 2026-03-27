@@ -99,6 +99,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .detail-card{background:#fff;border:1px solid #e8e6e1;border-radius:13px;padding:18px 20px;}
 .detail-card-title{font-size:10px;font-weight:700;color:#bbb;letter-spacing:0.09em;text-transform:uppercase;margin-bottom:12px;}
 .detail-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.detail-section-2{display:flex;flex-direction:column;gap:12px;padding:4px 0;}
 .detail-icon{font-size:34px;flex-shrink:0;}
 .detail-heading{flex:1;}
 .detail-name{font-family:'DM Serif Display',serif;font-size:22px;color:#1a1a1a;line-height:1.2;margin-bottom:3px;}
@@ -112,7 +113,8 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .meta-item{display:flex;flex-direction:column;gap:3px;}
 .meta-lbl{font-size:10px;font-weight:700;color:#bbb;letter-spacing:0.08em;text-transform:uppercase;}
 .meta-val{font-size:13px;font-weight:500;color:#1a1a1a;}
-.stars-lg{font-size:17px;color:#f59e0b;letter-spacing:2px;}
+.stars-lg{font-size:17px;letter-spacing:2px;}
+
 .reread-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .reread-lbl{font-size:10px;font-weight:700;color:#bbb;letter-spacing:0.09em;text-transform:uppercase;}
 .reread-count-badge{font-size:11px;font-weight:600;background:#f0ede8;color:#888;padding:2px 9px;border-radius:99px;}
@@ -161,9 +163,13 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .btn-cancel:hover{background:#e6e2dc;}
 .btn-confirm{flex:2;background:#1a1a1a;color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.13s,transform 0.1s;}
 .btn-confirm:hover{background:#333;transform:translateY(-1px);}
-.star-picker{display:flex;gap:6px;margin-top:2px;}
-.star-pick{font-size:22px;cursor:pointer;color:#e8e6e1;transition:color 0.1s;}
-.star-pick.on{color:#f59e0b;}
+.star-picker{display:flex;gap:2px;margin-top:2px;}
+.star-half-wrap{position:relative;display:inline-block;font-size:24px;cursor:pointer;width:26px;height:28px;}
+.star-half-wrap .star-bg{color:#e8e6e1;}
+.star-half-wrap .star-fill{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;color:#f59e0b;pointer-events:none;width:0%;}
+.star-half-wrap .star-left,.star-half-wrap .star-right{position:absolute;top:0;height:100%;width:50%;cursor:pointer;z-index:1;}
+.star-half-wrap .star-left{left:0;}
+.star-half-wrap .star-right{right:0;}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;background:#f8f7f4;border:1.5px solid #e8e6e1;border-radius:9px;padding:9px 11px;}
 .toggle-row label{font-size:13px;color:#1a1a1a;cursor:pointer;}
@@ -494,7 +500,7 @@ let ratingVal = 0;
 // ── Helpers ───────────────────────────────────────────────────────────────
 function uid(prefix){ return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
 function fmt(d){ if(!d)return'—'; const p=d.split('-'); if(p.length<3)return d; const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return p[2]+' '+months[parseInt(p[1])-1]+' '+p[0]; }
-function stars(n,size){ if(!n)return''; const s=size||12; return`<span style="font-size:${s}px;color:#f59e0b;letter-spacing:0.5px;">${'★'.repeat(n)}${'☆'.repeat(5-n)}</span>`; }
+function stars(n,size){ return starsHTML(n,size); }
 function badgeHTML(status){ const cls={in_progress:'progress',completed:'completed',wishlist:'wishlist',abandoned:'abandoned',on_hold:'on_hold'}[status]||status; return`<span class="badge badge-${cls}">${STATUS_LABELS[status]||status}</span>`; }
 function tagHTML(t,lang){ return`<span class="tag${lang?' tag-lang':''}">${t}</span>`; }
 function showToast(msg){ const t=$('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500); }
@@ -919,7 +925,7 @@ function renderDetail(e){
 
   let html = '';
 
-  // ── Main info card ──
+  // ── Section 1: Header ──
   const allLangs=(e.language||[]);
   html+=`<div class="detail-card">
     <div class="detail-header">
@@ -927,35 +933,44 @@ function renderDetail(e){
       <div class="detail-heading">
         <div class="detail-name">${e.title}</div>
         <div class="detail-sub">${[e.author||e.director||e.developer||(isSeries&&e.platforms?.length?e.platforms[0]:''), e.publication_year||e.release_year||''].filter(Boolean).join(' · ')}</div>
-        <div class="detail-badges">
-          ${badgeHTML(e.progress_status)}
-          ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral">${f.format} · ${f.library_status}</span>`).join(''):''}
-          ${!(isBook||isGame)&&e.format?`<span class="badge badge-neutral">${e.format}</span>`:''}
-          ${!(isBook||isGame)&&e.library_status?`<span class="badge badge-neutral">${e.library_status}</span>`:''}
-          ${isBook&&e.signed?`<span class="badge badge-neutral">Signed</span>`:''}
-          ${(isBook||isGame)&&e.gift?`<span class="badge badge-neutral">Gift</span>`:''}
-          ${e.favourite?`<span style="color:#e91e8c;font-size:15px;">♥</span>`:''}
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- Section 2: Status + dates + rating + favourite -->
+    <div class="detail-section-2">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${badgeHTML(e.progress_status)}
+        ${e.favourite?`<span style="color:#e91e8c;font-size:16px;line-height:1;">♥</span>`:''}
+      </div>
+      <div class="meta-grid">
+        ${isBook||isGame?`
+          <div class="meta-item"><span class="meta-lbl">Started</span><span class="meta-val">${fmt(e.dates?.started)||'—'}</span></div>
+          <div class="meta-item"><span class="meta-lbl">Finished</span><span class="meta-val">${fmt(e.dates?.finished)||'—'}</span></div>
+        `:''}
+        ${isMovie?`<div class="meta-item"><span class="meta-lbl">Watch date</span><span class="meta-val">${fmt(e.watch_date)||'—'}</span></div>`:''}
+        <div class="meta-item">
+          <span class="meta-lbl">Rating</span>
+          <span>${e.rating?starsHTML(e.rating,15):`<span style="font-size:13px;color:#ccc;">Not rated</span>`}</span>
         </div>
       </div>
     </div>
+
     <hr class="divider"/>
+
+    <!-- Section 3: Tags -->
     <div class="tags-row">
+      ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral" style="font-size:11px;">${f.format} · ${f.library_status}</span>`).join(''):''}
+      ${!(isBook||isGame)&&e.format?`<span class="badge badge-neutral" style="font-size:11px;">${e.format}${e.library_status?' · '+e.library_status:''}</span>`:''}
+      ${isBook&&e.signed?`<span class="badge badge-neutral" style="font-size:11px;">Signed</span>`:''}
+      ${(isBook||isGame)&&e.gift?`<span class="badge badge-neutral" style="font-size:11px;">Gift</span>`:''}
       ${allLangs.map(l=>tagHTML(l,true)).join('')}
       ${(e.genres||[]).map(g=>tagHTML(g,false)).join('')}
       ${(e.tags||[]).map(t=>`<span class="tag tag-custom">${t}</span>`).join('')}
       ${(e.platforms||[]).map(p=>tagHTML(p,false)).join('')}
     </div>
-    <div class="meta-grid">
-      ${isBook||isGame?`
-        <div class="meta-item"><span class="meta-lbl">Started</span><span class="meta-val">${fmt(e.dates?.started)||'—'}</span></div>
-        <div class="meta-item"><span class="meta-lbl">Finished</span><span class="meta-val">${fmt(e.dates?.finished)||'—'}</span></div>
-      `:''}
-      ${isMovie?`<div class="meta-item"><span class="meta-lbl">Watch date</span><span class="meta-val">${fmt(e.watch_date)||'—'}</span></div>`:''}
-      <div class="meta-item" style="margin-top:${isBook||isGame?'4px':'0'}">
-        <span class="meta-lbl">Rating</span>
-        <span class="stars-lg">${e.rating?'★'.repeat(e.rating)+'☆'.repeat(5-e.rating):'Not rated'}</span>
-      </div>
-    </div>
+
     ${(e.reruns&&e.reruns.length)||rerunFlag?`
     <hr class="divider"/>
     <div class="reread-header">
@@ -1010,18 +1025,18 @@ function renderDetail(e){
   }
 
   // ── Review ──
-  html+=`<div class="detail-card"><div class="detail-card-title">Review</div>
-    ${e.review?`<p class="review-text">${e.review.replace(/\n/g,'<br>')}</p>`:`<p class="empty-field">No review yet</p>`}
+  if(e.review) html+=`<div class="detail-card"><div class="detail-card-title">Review</div>
+    <p class="review-text">${e.review.replace(/\n/g,'<br>')}</p>
   </div>`;
 
   // ── Notes ──
-  html+=`<div class="detail-card"><div class="detail-card-title">Notes</div>
-    ${e.notes?`<p class="notes-text">${e.notes.replace(/\n/g,'<br>')}</p>`:`<p class="empty-field">No notes yet</p>`}
+  if(e.notes) html+=`<div class="detail-card"><div class="detail-card-title">Notes</div>
+    <p class="notes-text">${e.notes.replace(/\n/g,'<br>')}</p>
   </div>`;
 
   // ── Quotes ──
-  html+=`<div class="detail-card"><div class="detail-card-title">Quotes</div>
-    ${e.quotes&&e.quotes.length?e.quotes.map(q=>`<div class="quote-block"><p class="quote-text">"${q}"</p></div>`).join(''):`<p class="empty-field">No quotes saved yet</p>`}
+  if(e.quotes&&e.quotes.length) html+=`<div class="detail-card"><div class="detail-card-title">Quotes</div>
+    ${e.quotes.map(q=>`<div class="quote-block"><p class="quote-text">"${q}"</p></div>`).join('')}
   </div>`;
 
   $('detail-cards').innerHTML=html;
@@ -1269,7 +1284,7 @@ function openModal(mode, entry){
     </div>`:''}    <div class="field">
       <label>Rating</label>
       <div class="star-picker" id="star-picker">
-        ${[1,2,3,4,5].map(n=>`<span class="star-pick${ratingVal>=n?' on':''}" data-n="${n}" onclick="setRating(${n})">★</span>`).join('')}
+        ${[1,2,3,4,5].map(n=>`<div class="star-half-wrap" data-n="${n}"><span class="star-bg">★</span><span class="star-fill" style="width:${ratingVal>=n?'100%':ratingVal>=n-0.5?'50%':'0%'}">★</span><span class="star-left" onclick="setRating(${n-0.5})"></span><span class="star-right" onclick="setRating(${n})"></span></div>`).join('')}
       </div>
     </div>
     <div class="field"><label>Review</label><textarea id="f-review" placeholder="Your thoughts…">${esc(v('review'))}</textarea></div>
@@ -1433,8 +1448,26 @@ function readFormats(){
 
 
 function setRating(n){
-  ratingVal = ratingVal===n?0:n;
-  document.querySelectorAll('.star-pick').forEach(s=>s.classList.toggle('on',parseInt(s.dataset.n)<=ratingVal));
+  ratingVal = ratingVal===n ? 0 : n;
+  document.querySelectorAll('#star-picker .star-half-wrap').forEach((wrap,i)=>{
+    const fill=wrap.querySelector('.star-fill');
+    const starN=i+1;
+    fill.style.width = ratingVal>=starN?'100%':ratingVal>=starN-0.5?'50%':'0%';
+  });
+}
+
+function starsHTML(n, size){
+  if(!n) return '';
+  const sz = size||12;
+  const full = Math.floor(n);
+  const half = n % 1 >= 0.5;
+  const empty = 5 - full - (half?1:0);
+  let html = `<span style="font-size:${sz}px;color:#f59e0b;letter-spacing:1px;display:inline-flex;align-items:center;gap:1px;">`;
+  for(let i=0;i<full;i++) html+=`<span>★</span>`;
+  if(half) html+=`<span style="position:relative;display:inline-block;"><span style="color:#e8e6e1;">★</span><span style="position:absolute;left:0;top:0;overflow:hidden;width:50%;color:#f59e0b;">★</span></span>`;
+  for(let i=0;i<empty;i++) html+=`<span style="color:#e8e6e1;">★</span>`;
+  html+=`</span>`;
+  return html;
 }
 
 function closeModal(){ $('modal-overlay').classList.remove('open'); }
