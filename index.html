@@ -74,17 +74,16 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .heart-empty{font-size:13px;color:#ddd;}
 
 /* ── Tags & badges ── */
-.tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:#faeeda;color:#854f0b;}
-.tag-lang{background:#fce8f0;color:#ad1457;}
-.tag-custom{background:#e8f4fd;color:#1a6b9a;}
+.tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:#fce8f0;color:#ad1457;}
+.tag-lang{background:#fef3e2;color:#92400e;}
+.tag-custom{background:#e6f1fb;color:#185fa5;}
 .badge{font-size:10px;font-weight:600;padding:3px 10px;border-radius:99px;}
 .badge-completed{background:#e0f5ec;color:#1a7a4a;}
 .badge-progress{background:#e6f1fb;color:#185fa5;}
 .badge-wishlist{background:#fce8f0;color:#ad1457;}
 .badge-abandoned{background:#fdeaea;color:#c0392b;}
-.badge-on_hold{background:#fef3e2;color:#b7791f;}
-.badge-neutral{background:#f0ede8;color:#888;}
-
+.badge-on_hold{background:#fef3e2;color:#92400e;}
+.badge-neutral{background:#e0f5ec;color:#1a7a4a;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;}
 /* ── Empty state ── */
 #empty-state{text-align:center;padding:64px 0;display:none;}
 #empty-state .ei{font-size:40px;margin-bottom:10px;}
@@ -109,7 +108,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .detail-edit-btn:hover{border-color:#1a1a1a;color:#1a1a1a;}
 .divider{border:none;border-top:1px solid #f0ede8;margin:14px 0;}
 .tags-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;}
-.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.meta-grid{display:flex;flex-wrap:wrap;gap:16px 24px;}
 .meta-item{display:flex;flex-direction:column;gap:3px;}
 .meta-lbl{font-size:10px;font-weight:700;color:#bbb;letter-spacing:0.08em;text-transform:uppercase;}
 .meta-val{font-size:13px;font-weight:500;color:#1a1a1a;}
@@ -942,6 +941,7 @@ function renderDetail(e){
     <div class="detail-section-2">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         ${badgeHTML(e.progress_status)}
+        ${e.rating?starsHTML(e.rating,14):''}
         ${e.favourite?`<span style="color:#e91e8c;font-size:16px;line-height:1;">♥</span>`:''}
       </div>
       <div class="meta-grid">
@@ -950,10 +950,6 @@ function renderDetail(e){
           <div class="meta-item"><span class="meta-lbl">Finished</span><span class="meta-val">${fmt(e.dates?.finished)||'—'}</span></div>
         `:''}
         ${isMovie?`<div class="meta-item"><span class="meta-lbl">Watch date</span><span class="meta-val">${fmt(e.watch_date)||'—'}</span></div>`:''}
-        <div class="meta-item">
-          <span class="meta-lbl">Rating</span>
-          <span>${e.rating?starsHTML(e.rating,15):`<span style="font-size:13px;color:#ccc;">Not rated</span>`}</span>
-        </div>
       </div>
     </div>
 
@@ -961,10 +957,10 @@ function renderDetail(e){
 
     <!-- Section 3: Tags -->
     <div class="tags-row">
-      ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral" style="font-size:11px;">${f.format} · ${f.library_status}</span>`).join(''):''}
-      ${!(isBook||isGame)&&e.format?`<span class="badge badge-neutral" style="font-size:11px;">${e.format}${e.library_status?' · '+e.library_status:''}</span>`:''}
-      ${isBook&&e.signed?`<span class="badge badge-neutral" style="font-size:11px;">Signed</span>`:''}
-      ${(isBook||isGame)&&e.gift?`<span class="badge badge-neutral" style="font-size:11px;">Gift</span>`:''}
+      ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral">${f.format} · ${f.library_status}</span>`).join(''):''}
+      ${!(isBook||isGame)&&e.format?`<span class="badge badge-neutral">${e.format}${e.library_status?' · '+e.library_status:''}</span>`:''}
+      ${isBook&&e.signed?`<span class="badge badge-neutral">Signed</span>`:''}
+      ${(isBook||isGame)&&e.gift?`<span class="badge badge-neutral">Gift</span>`:''}
       ${allLangs.map(l=>tagHTML(l,true)).join('')}
       ${(e.genres||[]).map(g=>tagHTML(g,false)).join('')}
       ${(e.tags||[]).map(t=>`<span class="tag tag-custom">${t}</span>`).join('')}
