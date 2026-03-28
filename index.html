@@ -1469,6 +1469,7 @@ function starsHTML(n, size){
 function closeModal(){ $('modal-overlay').classList.remove('open'); }
 
 function confirmModal(){
+  try {
   const tab=currentTab;
   const isBook=tab==='books',isMovie=tab==='movies',isSeries=tab==='series',isGame=tab==='games';
   const title=($('f-title')||{value:''}).value.trim();
@@ -1544,6 +1545,10 @@ function confirmModal(){
   closeModal();
   if(detailId){ openDetail(modalMode==='edit'?editTarget.id:base.id); }
   renderList();
+  } catch(err) {
+    console.error('confirmModal error:', err);
+    showToast('Error saving: '+err.message);
+  }
 }
 
 // ── Export / Import ───────────────────────────────────────────────────────
