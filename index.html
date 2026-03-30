@@ -965,7 +965,7 @@ function renderDetail(e){
       <div class="detail-icon">${TABS[tab].icon}</div>
       <div class="detail-heading">
         <div class="detail-name">${e.title}</div>
-        <div class="detail-sub">${[e.author||e.director||e.developer||(isSeries&&e.platforms?.length?e.platforms[0]:''), e.publication_year||e.release_year||''].filter(Boolean).join(' · ')}</div>
+        <div class="detail-sub">${[e.author||e.director||e.developer||(isSeries&&e.platforms?.length?e.platforms[0]:''), e.publication_year||e.release_year||'', isSeries&&e.seasons?.length?e.seasons.length+' season'+(e.seasons.length!==1?'s':''):''].filter(Boolean).join(' · ')}</div>
       </div>
     </div>
 
