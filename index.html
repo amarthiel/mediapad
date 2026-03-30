@@ -389,6 +389,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
       <option value="all">All library</option>
       <option value="Owned">Owned</option>
       <option value="Subscription">Subscription</option>
+      <option value="none">Not owned</option>
     </select>
     <select class="filter-select" id="filter-fav" onchange="renderList()">
       <option value="all">All entries</option>
@@ -448,8 +449,8 @@ const MOVIE_FORMAT_OPTS = ['Digital'];
 const SERIES_FORMAT_OPTS = ['Digital'];
 
 const BOOK_LIBRARY_OPTS = ['Owned','Borrowed','Subscription','Sold','Donated','Gifted away'];
-const MOVIE_LIBRARY_OPTS = ['Owned','Subscription'];
-const SERIES_LIBRARY_OPTS = ['Owned','Subscription'];
+const MOVIE_LIBRARY_OPTS = ['Not owned','Owned','Subscription'];
+const SERIES_LIBRARY_OPTS = ['Not owned','Owned','Subscription'];
 const GAME_LIBRARY_OPTS = ['Owned','Deleted'];
 
 const STATUS_OPTS = ['wishlist','in_progress','completed','on_hold','abandoned'];
@@ -520,12 +521,15 @@ function getFiltered(){
     if(fav==='signed'&&!e.signed)return false;
     if(fav==='gift'&&!e.gift)return false;
     if(lib!=='all'){
-      // For books/games: match if any format has this library_status
       if(currentTab==='books'||currentTab==='games'){
         const match=(e.formats||[]).some(f=>f.library_status===lib);
         if(!match)return false;
       } else {
-        if(e.library_status!==lib)return false;
+        if(lib==='none'){
+          if(e.library_status&&e.library_status!=='Not owned')return false;
+        } else {
+          if(e.library_status!==lib)return false;
+        }
       }
     }
     if(searchQuery){
@@ -971,7 +975,6 @@ function renderDetail(e){
     <div class="detail-section-2">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         ${badgeHTML(e.progress_status)}
-        ${!(isBook||isGame)&&e.library_status?`<span class="badge badge-neutral">${e.library_status}</span>`:''}
         ${e.rating?starsHTML(e.rating,14):''}
         ${e.favourite?`<span style="color:#e91e8c;font-size:16px;line-height:1;">♥</span>`:''}
       </div>
@@ -993,6 +996,7 @@ function renderDetail(e){
     <!-- Section 3: Tags -->
     <div class="tags-row">
       ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral">${f.format} · ${f.library_status}</span>`).join(''):''}
+      ${!(isBook||isGame)&&e.library_status&&e.library_status!=='Not owned'?`<span class="badge badge-neutral">${e.library_status}</span>`:''}
       ${isMovie&&e.platforms?.length?e.platforms.map(p=>`<span class="badge" style="background:#fdeaea;color:#c0392b;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;">${p}</span>`).join(''):''}
       ${isBook&&e.signed?`<span class="badge badge-neutral">Signed</span>`:''}
       ${(isBook||isGame)&&e.gift?`<span class="badge badge-neutral">Gift</span>`:''}
@@ -1245,12 +1249,9 @@ function openModal(mode, entry){
     <div class="field"><label>Title</label><input id="f-title" value="${esc(v('title'))}" placeholder="Title"/></div>
     ${isBook?`<div class="field"><label>Author</label><input id="f-author" value="${esc(v('author'))}" placeholder="Author"/></div>`:''}
     ${isMovie?`
+    <div class="field"><label>Director</label><input id="f-director" value="${esc(v('director'))}" placeholder="Director"/></div>
     <div class="field-row">
       <div class="field"><label>Release year</label><input id="f-year" type="number" value="${esc(v('release_year','')).toString()}" placeholder="Year"/></div>
-      <div class="field"><label>Director</label><input id="f-director" value="${esc(v('director'))}" placeholder="Director"/></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="drama, thriller…"/></div>
       <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
     </div>
     <div class="field-row">
@@ -1261,20 +1262,21 @@ function openModal(mode, entry){
       <div class="field"><label>Library</label><select id="f-library">${MOVIE_LIBRARY_OPTS.map(o=>`<option${v('library_status')===o?' selected':''}>${o}</option>`).join('')}</select></div>
       <div class="field"><label>Platform</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="Netflix, MUBI…"/></div>
     </div>
+    <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="drama, thriller…"/></div>
     <div class="field"><label>Tags</label><input id="f-tags" value="${esc((e.tags||[]).join(', '))}" placeholder="vampires, victorian…"/></div>
     `:''}
     ${isSeries?`
     <div class="field-row">
       <div class="field"><label>Release year</label><input id="f-year" type="number" value="${esc(v('release_year','')).toString()}" placeholder="Year"/></div>
-      <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
-    </div>
-    <div class="field-row">
       <div class="field"><label>Number of seasons</label><input id="f-season-count" type="number" min="1" value="${(e.seasons||[]).length||''}" placeholder="e.g. 3"/></div>
-      <div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Library</label><select id="f-library">${SERIES_LIBRARY_OPTS.map(o=>`<option${v('library_status')===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
       <div class="field"><label>Platform</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="Netflix, HBO…"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>
+      <div class="field"><label>Library</label><select id="f-library">${SERIES_LIBRARY_OPTS.map(o=>`<option${v('library_status')===o?' selected':''}>${o}</option>`).join('')}</select></div>
     </div>
     <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="drama, sci-fi…"/></div>
     <div class="field"><label>Tags</label><input id="f-tags" value="${esc((e.tags||[]).join(', '))}" placeholder="vampires, victorian…"/></div>
