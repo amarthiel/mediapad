@@ -1032,9 +1032,9 @@ function renderDetail(e){
         <div class="season-hdr" onclick="toggleSeason(this)">
           <div class="season-left">
             <span class="season-name">Season ${s.season}</span>
+            ${s.watch_date?`<span class="season-date">Finished ${fmt(s.watch_date)}</span>`:''}
             ${s.rating?starsHTML(s.rating,11):''}
             ${s.favourite?`<span style="color:#e91e8c;font-size:12px;line-height:1;">♥</span>`:''}
-            ${s.watch_date?`<span class="season-date">Finished ${fmt(s.watch_date)}</span>`:''}
           </div>
           <div class="season-right">
             ${hasEps?`<span class="ep-count">${s.episodes.length} eps logged</span>`:''}
