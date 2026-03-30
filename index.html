@@ -1206,6 +1206,7 @@ function openModal(mode, entry){
   const body=$('modal-body');
   overlay.classList.add('open');
   setTimeout(()=>{ const box=$('modal-box'); if(box) box.scrollTop=0; }, 10);
+  const tab=currentTab;
   const isBook=tab==='books',isMovie=tab==='movies',isSeries=tab==='series',isGame=tab==='games';
   const e=editTarget||{};
   title.textContent=mode==='add'?`Add ${TABS[tab].label.slice(0,-1)}`:`Edit entry`;
