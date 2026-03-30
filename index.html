@@ -385,6 +385,11 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
       <option value="on_hold">On hold</option>
       <option value="abandoned">Abandoned</option>
     </select>
+    <select class="filter-select" id="filter-library" onchange="renderList()">
+      <option value="all">All library</option>
+      <option value="Owned">Owned</option>
+      <option value="Subscription">Subscription</option>
+    </select>
     <select class="filter-select" id="filter-fav" onchange="renderList()">
       <option value="all">All entries</option>
       <option value="fav">Favourites</option>
@@ -443,8 +448,8 @@ const MOVIE_FORMAT_OPTS = ['Digital'];
 const SERIES_FORMAT_OPTS = ['Digital'];
 
 const BOOK_LIBRARY_OPTS = ['Owned','Borrowed','Subscription','Sold','Donated','Gifted away'];
-const MOVIE_LIBRARY_OPTS = ['Owned','Subscription','Deleted'];
-const SERIES_LIBRARY_OPTS = ['Owned','Subscription','Deleted'];
+const MOVIE_LIBRARY_OPTS = ['Owned','Subscription'];
+const SERIES_LIBRARY_OPTS = ['Owned','Subscription'];
 const GAME_LIBRARY_OPTS = ['Owned','Deleted'];
 
 const STATUS_OPTS = ['wishlist','in_progress','completed','on_hold','abandoned'];
@@ -508,11 +513,21 @@ function getIcon(tab){ return TABS[tab].icon; }
 function getFiltered(){
   const status = $('filter-status').value;
   const fav = $('filter-fav').value;
+  const lib = ($('filter-library')||{value:'all'}).value;
   const filtered = data[currentTab].filter(e=>{
     if(status!=='all'&&e.progress_status!==status)return false;
     if(fav==='fav'&&!e.favourite)return false;
     if(fav==='signed'&&!e.signed)return false;
     if(fav==='gift'&&!e.gift)return false;
+    if(lib!=='all'){
+      // For books/games: match if any format has this library_status
+      if(currentTab==='books'||currentTab==='games'){
+        const match=(e.formats||[]).some(f=>f.library_status===lib);
+        if(!match)return false;
+      } else {
+        if(e.library_status!==lib)return false;
+      }
+    }
     if(searchQuery){
       const q=searchQuery.toLowerCase();
       const fields=[e.title,e.author,e.director,e.developer,...(e.genres||[]),...(e.language||[]),...(e.platforms||[])];
@@ -848,6 +863,7 @@ function mobileSwitchTab(tab, btn){
   currentTab=tab;
   $('filter-status').value='all';
   $('filter-fav').value='all';
+  $('filter-library').value='all';
   $('filter-sort').value='date_read';
   $('search-input').value='';
   searchQuery='';
@@ -866,6 +882,7 @@ function switchTab(tab, btn){
   if(mobBtn) mobBtn.classList.add('active');
   $('filter-status').value='all';
   $('filter-fav').value='all';
+  $('filter-library').value='all';
   $('filter-sort').value='date_read';
   $('search-input').value='';
   searchQuery='';
@@ -913,6 +930,19 @@ function openDetail(id){
   showDetailView();
 }
 
+function seriesStartDate(e){
+  const dates=[];
+  (e.seasons||[]).forEach(s=>(s.episodes||[]).forEach(ep=>{if(ep.date)dates.push(ep.date);}));
+  if(!dates.length)(e.seasons||[]).forEach(s=>{if(s.watch_date)dates.push(s.watch_date);});
+  return dates.sort()[0]||'';
+}
+function seriesEndDate(e){
+  const dates=[];
+  (e.seasons||[]).forEach(s=>(s.episodes||[]).forEach(ep=>{if(ep.date)dates.push(ep.date);}));
+  if(!dates.length)(e.seasons||[]).forEach(s=>{if(s.watch_date)dates.push(s.watch_date);});
+  return dates.sort()[dates.length-1]||'';
+}
+
 function renderDetail(e){
   const tab = currentTab;
   const isBook = tab==='books';
@@ -941,6 +971,7 @@ function renderDetail(e){
     <div class="detail-section-2">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         ${badgeHTML(e.progress_status)}
+        ${!(isBook||isGame)&&e.library_status?`<span class="badge badge-neutral">${e.library_status}</span>`:''}
         ${e.rating?starsHTML(e.rating,14):''}
         ${e.favourite?`<span style="color:#e91e8c;font-size:16px;line-height:1;">♥</span>`:''}
       </div>
@@ -950,6 +981,10 @@ function renderDetail(e){
           <div class="meta-item"><span class="meta-lbl">Finished</span><span class="meta-val">${fmt(e.dates?.finished)||'—'}</span></div>
         `:''}
         ${isMovie?`<div class="meta-item"><span class="meta-lbl">Watch date</span><span class="meta-val">${fmt(e.watch_date)||'—'}</span></div>`:''}
+        ${isSeries?`
+          <div class="meta-item"><span class="meta-lbl">Started</span><span class="meta-val">${fmt(seriesStartDate(e))||'—'}</span></div>
+          <div class="meta-item"><span class="meta-lbl">Finished</span><span class="meta-val">${fmt(seriesEndDate(e))||'—'}</span></div>
+        `:''}
       </div>
     </div>
 
@@ -958,13 +993,12 @@ function renderDetail(e){
     <!-- Section 3: Tags -->
     <div class="tags-row">
       ${(isBook||isGame)&&e.formats?.length?e.formats.map(f=>`<span class="badge badge-neutral">${f.format} · ${f.library_status}</span>`).join(''):''}
-      ${!(isBook||isGame)&&e.format?`<span class="badge badge-neutral">${e.format}${e.library_status?' · '+e.library_status:''}</span>`:''}
+      ${isMovie&&e.platforms?.length?e.platforms.map(p=>`<span class="badge" style="background:#fdeaea;color:#c0392b;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;">${p}</span>`).join(''):''}
       ${isBook&&e.signed?`<span class="badge badge-neutral">Signed</span>`:''}
       ${(isBook||isGame)&&e.gift?`<span class="badge badge-neutral">Gift</span>`:''}
       ${allLangs.map(l=>tagHTML(l,true)).join('')}
       ${(e.genres||[]).map(g=>tagHTML(g,false)).join('')}
       ${(e.tags||[]).map(t=>`<span class="tag tag-custom">${t}</span>`).join('')}
-      ${(e.platforms||[]).map(p=>tagHTML(p,false)).join('')}
     </div>
 
     ${(e.reruns&&e.reruns.length)||rerunFlag?`
@@ -1002,11 +1036,11 @@ function renderDetail(e){
             <span class="chevron">▼</span>
           </div>
         </div>
-        <div class="season-body${si===0&&hasEps?' open':''}">
+        <div class="season-body">
           ${s.rating||s.favourite||s.notes?`<div style="display:flex;align-items:center;gap:12px;padding:8px 0 10px;border-bottom:${hasEps?'1px solid #eeece8':'none'};margin-bottom:${hasEps?'8px':'0'};">
-            ${s.rating?`<span style="font-size:13px;color:#f59e0b;">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</span>`:''}
+            ${s.rating?starsHTML(s.rating,13):''}
             ${s.favourite?`<span style="color:#e91e8c;font-size:13px;">♥</span>`:''}
-            ${s.notes?`<span style="font-size:12px;color:#777;font-style:italic;">${s.notes}</span>`:''}
+            ${s.notes?`<span style="font-size:12px;color:#777;font-style:italic;">${s.notes.replace(/\n/g,'<br>')}</span>`:''}
           </div>`:''}
           ${hasEps?s.episodes.map(ep=>`
             <div class="ep-row">
@@ -1171,8 +1205,7 @@ function openModal(mode, entry){
   const title=$('modal-title');
   const body=$('modal-body');
   overlay.classList.add('open');
-
-  const tab=currentTab;
+  setTimeout(()=>{ const box=$('modal-box'); if(box) box.scrollTop=0; }, 10);
   const isBook=tab==='books',isMovie=tab==='movies',isSeries=tab==='series',isGame=tab==='games';
   const e=editTarget||{};
   title.textContent=mode==='add'?`Add ${TABS[tab].label.slice(0,-1)}`:`Edit entry`;
@@ -1210,28 +1243,60 @@ function openModal(mode, entry){
   body.innerHTML=`
     <div class="field"><label>Title</label><input id="f-title" value="${esc(v('title'))}" placeholder="Title"/></div>
     ${isBook?`<div class="field"><label>Author</label><input id="f-author" value="${esc(v('author'))}" placeholder="Author"/></div>`:''}
-    ${isMovie?`<div class="field"><label>Director</label><input id="f-director" value="${esc(v('director'))}" placeholder="Director"/></div>`:''}
-    ${isGame?`<div class="field"><label>Developer</label><input id="f-developer" value="${esc(v('developer'))}" placeholder="Developer"/></div>`:''}
-    <div class="${(isBook||isGame)?'field':'field-row'}">
-      <div class="field"><label>${isBook?'Publication year':'Release year'}</label><input id="f-year" type="number" value="${esc(v(isBook?'publication_year':'release_year','')).toString()}" placeholder="Year"/></div>
-      ${!(isBook||isGame)?`<div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>`:''}
+    ${isMovie?`
+    <div class="field-row">
+      <div class="field"><label>Release year</label><input id="f-year" type="number" value="${esc(v('release_year','')).toString()}" placeholder="Year"/></div>
+      <div class="field"><label>Director</label><input id="f-director" value="${esc(v('director'))}" placeholder="Director"/></div>
     </div>
-    ${(isBook||isGame)?`<div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>`:''}
-    ${!(isBook||isGame)?`<div class="field-row">
-      <div class="field"><label>Format</label><select id="f-format">${formatOpts.map(o=>`<option${v('format')===o?' selected':''}>${o}</option>`).join('')}</select></div>
-      <div class="field"><label>Library</label><select id="f-library">${libraryOpts.map(o=>`<option${v('library_status')===o?' selected':''}>${o}</option>`).join('')}</select></div>
-    </div>`:''}
-    ${formatsHTML}
-    <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
-    <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="fantasy, drama…"/></div>
-    <div class="field"><label>Tags</label><input id="f-tags" value="${esc((e.tags||[]).join(', '))}" placeholder="vampires, victorian, cats…"/></div>
-    ${isSeries||isGame||isMovie?`<div class="field"><label>Platforms</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="${isMovie?'Netflix, MUBI, Cinema…':isSeries?'Netflix, HBO, Apple TV+…':'PC, PS5, Switch…'}"/></div>`:''}
+    <div class="field-row">
+      <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="drama, thriller…"/></div>
+      <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Status</label><select id="f-status">${['wishlist','on_hold','completed'].map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>
+      <div class="field"><label>Watch date</label><input id="f-watchdate" type="date" value="${esc(v('watch_date',''))}"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Library</label><select id="f-library">${MOVIE_LIBRARY_OPTS.map(o=>`<option${v('library_status')===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>Platform</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="Netflix, MUBI…"/></div>
+    </div>
+    <div class="field"><label>Tags</label><input id="f-tags" value="${esc((e.tags||[]).join(', '))}" placeholder="vampires, victorian…"/></div>
+    `:''}
+    ${isSeries?`
+    <div class="field-row">
+      <div class="field"><label>Release year</label><input id="f-year" type="number" value="${esc(v('release_year','')).toString()}" placeholder="Year"/></div>
+      <div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Number of seasons</label><input id="f-season-count" type="number" min="1" value="${(e.seasons||[]).length||''}" placeholder="e.g. 3"/></div>
+      <div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Library</label><select id="f-library">${SERIES_LIBRARY_OPTS.map(o=>`<option${v('library_status')===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>Platform</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="Netflix, HBO…"/></div>
+    </div>
+    <div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="drama, sci-fi…"/></div>
+    <div class="field"><label>Tags</label><input id="f-tags" value="${esc((e.tags||[]).join(', '))}" placeholder="vampires, victorian…"/></div>
+    `:''}
+    ${isBook?`
+    <div class="${'field'}"><label>Publication year</label><input id="f-year" type="number" value="${esc(v('publication_year','')).toString()}" placeholder="Year"/></div>
+    <div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>
+    `:''}
+    ${isGame?`
+    <div class="field"><label>Developer</label><input id="f-developer" value="${esc(v('developer'))}" placeholder="Developer"/></div>
+    <div class="field"><label>Release year</label><input id="f-year" type="number" value="${esc(v('release_year','')).toString()}" placeholder="Year"/></div>
+    <div class="field"><label>Status</label><select id="f-status">${STATUS_OPTS.map(o=>`<option value="${o}"${v('progress_status')===o?' selected':''}>${STATUS_LABELS[o]}</option>`).join('')}</select></div>
+    `:''}
+    ${(isBook||isGame)?`${formatsHTML}`:''}
+    ${(isBook||isGame)?`<div class="field"><label>Language(s)</label><input id="f-lang" value="${esc(langVal)}" placeholder="English, French…"/></div>`:''}
+    ${(isBook||isGame)?`<div class="field"><label>Genres</label><input id="f-genres" value="${esc(genreVal)}" placeholder="fantasy, drama…"/></div>`:''}
+    ${(isBook||isGame)?`<div class="field"><label>Tags</label><input id="f-tags" value="${esc((e.tags||[]).join(', '))}" placeholder="vampires, victorian…"/></div>`:''}
+    ${isGame?`<div class="field"><label>Platforms</label><input id="f-platforms" value="${esc(platformVal)}" placeholder="PC, PS5…"/></div>`:''}
     ${isBook||isGame?`
     <div class="field-row">
       <div class="field"><label>Started</label><input id="f-started" type="date" value="${vd('started')}"/></div>
       <div class="field"><label>Finished</label><input id="f-finished" type="date" value="${vd('finished')}"/></div>
     </div>`:''}
-    ${isMovie?`<div class="field"><label>Watch date</label><input id="f-watchdate" type="date" value="${esc(v('watch_date',''))}"/></div>`:''}
     ${isSeries?`
     <div class="field">
       <label>Seasons</label>
@@ -1250,8 +1315,8 @@ function openModal(mode, entry){
           </div>
           <div style="padding:10px;background:#fff;border-top:1px solid #f0ede8;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <div class="ssn-stars" style="display:flex;gap:4px;">
-                ${[1,2,3,4,5].map(n=>`<span class="ssn-star" data-n="${n}" onclick="setSsnRating(this,${n})" style="font-size:18px;cursor:pointer;color:${(s.rating||0)>=n?'#f59e0b':'#e8e6e1'};transition:color 0.1s;">★</span>`).join('')}
+              <div class="ssn-stars" data-rating="${s.rating||0}" style="display:flex;gap:2px;">
+                ${[1,2,3,4,5].map(n=>`<div class="star-half-wrap" data-n="${n}" style="font-size:20px;"><span class="star-bg">★</span><span class="star-fill" style="width:${(s.rating||0)>=n?'100%':(s.rating||0)>=n-0.5?'50%':'0%'}">★</span><span class="star-left" onclick="setSsnRating(this,${n-0.5})"></span><span class="star-right" onclick="setSsnRating(this,${n})"></span></div>`).join('')}
               </div>
               <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#888;cursor:pointer;font-family:'DM Sans',sans-serif;">
                 <input type="checkbox" class="ssn-fav" ${s.favourite?'checked':''} style="width:14px;height:14px;accent-color:#e91e8c;cursor:pointer;"/> Favourite
@@ -1277,7 +1342,8 @@ function openModal(mode, entry){
         </div>`).join('')}
       </div>
       <button onclick="addSeasonRow()" style="background:transparent;border:1.5px dashed #d5d3ce;border-radius:9px;padding:6px 12px;font-size:12px;color:#bbb;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;width:100%;margin-top:2px;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='#1a1a1a';this.style.color='#1a1a1a'" onmouseout="this.style.borderColor='#d5d3ce';this.style.color='#bbb'">+ Add season</button>
-    </div>`:''}    <div class="field">
+    </div>`:''}
+    <div class="field">
       <label>Rating</label>
       <div class="star-picker" id="star-picker">
         ${[1,2,3,4,5].map(n=>`<div class="star-half-wrap" data-n="${n}"><span class="star-bg">★</span><span class="star-fill" style="width:${ratingVal>=n?'100%':ratingVal>=n-0.5?'50%':'0%'}">★</span><span class="star-left" onclick="setRating(${n-0.5})"></span><span class="star-right" onclick="setRating(${n})"></span></div>`).join('')}
@@ -1315,11 +1381,15 @@ function openModal(mode, entry){
 }
 
 function setSsnRating(star, n){
-  const stars=star.closest('.ssn-stars').querySelectorAll('.ssn-star');
-  const current=parseInt(star.closest('.ssn-stars').dataset.rating||0);
+  const wrap=star.closest('.ssn-stars');
+  const current=parseFloat(wrap.dataset.rating||0);
   const newRating=current===n?0:n;
-  star.closest('.ssn-stars').dataset.rating=newRating;
-  stars.forEach(s=>s.style.color=parseInt(s.dataset.n)<=newRating?'#f59e0b':'#e8e6e1');
+  wrap.dataset.rating=newRating;
+  wrap.querySelectorAll('.star-half-wrap').forEach((hw,i)=>{
+    const fill=hw.querySelector('.star-fill');
+    const starN=i+1;
+    fill.style.width=newRating>=starN?'100%':newRating>=starN-0.5?'50%':'0%';
+  });
 }
 function addSeasonRow(){
   const list=$('seasons-list');
@@ -1342,7 +1412,7 @@ function addSeasonRow(){
     <div style="padding:10px;background:#fff;border-top:1px solid #f0ede8;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div class="ssn-stars" data-rating="0" style="display:flex;gap:4px;">
-          ${[1,2,3,4,5].map(n=>`<span class="ssn-star" data-n="${n}" onclick="setSsnRating(this,${n})" style="font-size:18px;cursor:pointer;color:#e8e6e1;transition:color 0.1s;">★</span>`).join('')}
+          ${[1,2,3,4,5].map(n=>`<div class="star-half-wrap" data-n="${n}" style="font-size:20px;"><span class="star-bg">★</span><span class="star-fill" style="width:0%">★</span><span class="star-left" onclick="setSsnRating(this,${n-0.5})"></span><span class="star-right" onclick="setSsnRating(this,${n})"></span></div>`).join('')}
         </div>
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#888;cursor:pointer;font-family:'DM Sans',sans-serif;">
           <input type="checkbox" class="ssn-fav" style="width:14px;height:14px;accent-color:#e91e8c;cursor:pointer;"/> Favourite
@@ -1393,11 +1463,14 @@ function readSeasons(existing){
       date:er.querySelector('.ep-date').value,
     })).filter(ep=>ep.ep>0);
     const ratingEl=row.querySelector('.ssn-stars');
-    const rating=ratingEl?parseInt(ratingEl.dataset.rating)||null:oldSeason.rating||null;
+    const rating=ratingEl?parseFloat(ratingEl.dataset.rating)||null:oldSeason.rating||null;
+    const epDates=episodes.map(ep=>ep.date).filter(Boolean).sort();
+    const derivedDate=epDates[epDates.length-1]||'';
+    const manualDate=row.querySelector('.ssn-date').value;
     return {
       season:i+1,
       status:row.querySelector('.ssn-status').value,
-      watch_date:row.querySelector('.ssn-date').value,
+      watch_date:manualDate||derivedDate,
       rating,
       favourite:row.querySelector('.ssn-fav')?.checked||false,
       notes:row.querySelector('.ssn-notes')?.value.trim()||'',
@@ -1506,18 +1579,18 @@ function confirmModal(){
     base.reruns=editTarget?.reruns||[];
   }
   if(isMovie){
-    base.format=$('f-format')?$('f-format').value:'Digital';
-    base.library_status=$('f-library').value;
+    base.format='Digital';
+    base.library_status=($('f-library')||{value:''}).value;
     base.director=($('f-director')||{value:''}).value.trim();
-    base.platforms=platforms;
+    base.platforms=($('f-platforms')||{value:''}).value.split(',').map(s=>s.trim()).filter(Boolean);
     base.watch_date=($('f-watchdate')||{value:''}).value;
     base.rewatch=!!(editTarget?.rewatch);
     base.reruns=editTarget?.reruns||[];
   }
   if(isSeries){
-    base.format=$('f-format')?$('f-format').value:'Digital';
-    base.library_status=$('f-library').value;
-    base.platforms=platforms;
+    base.format='Digital';
+    base.library_status=($('f-library')||{value:''}).value;
+    base.platforms=($('f-platforms')||{value:''}).value.split(',').map(s=>s.trim()).filter(Boolean);
     base.seasons=$('seasons-list')?readSeasons(editTarget?.seasons):editTarget?.seasons||[];
     base.rewatch=!!(editTarget?.rewatch);
     base.reruns=editTarget?.reruns||[];
