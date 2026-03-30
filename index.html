@@ -1032,6 +1032,8 @@ function renderDetail(e){
         <div class="season-hdr" onclick="toggleSeason(this)">
           <div class="season-left">
             <span class="season-name">Season ${s.season}</span>
+            ${s.rating?starsHTML(s.rating,11):''}
+            ${s.favourite?`<span style="color:#e91e8c;font-size:12px;line-height:1;">♥</span>`:''}
             ${s.watch_date?`<span class="season-date">Finished ${fmt(s.watch_date)}</span>`:''}
           </div>
           <div class="season-right">
@@ -1042,8 +1044,6 @@ function renderDetail(e){
         </div>
         <div class="season-body">
           ${s.rating||s.favourite||s.notes?`<div style="display:flex;align-items:center;gap:12px;padding:8px 0 10px;border-bottom:${hasEps?'1px solid #eeece8':'none'};margin-bottom:${hasEps?'8px':'0'};">
-            ${s.rating?starsHTML(s.rating,13):''}
-            ${s.favourite?`<span style="color:#e91e8c;font-size:13px;">♥</span>`:''}
             ${s.notes?`<span style="font-size:12px;color:#777;font-style:italic;">${s.notes.replace(/\n/g,'<br>')}</span>`:''}
           </div>`:''}
           ${hasEps?s.episodes.map(ep=>`
