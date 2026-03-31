@@ -140,7 +140,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:#f8f7f4;min-height:1
 .season-right{display:flex;align-items:center;gap:8px;}
 .ep-count{font-size:11px;color:#aaa;font-weight:600;}
 .chevron{font-size:10px;color:#ccc;transition:transform 0.2s;display:inline-block;}
-.season-body{background:#f8f7f4;border-top:1px solid #f0ede8;padding:10px 14px;display:none;}
+.season-body{background:#f8f7f4;border-top:1px solid #f0ede8;padding:4px 14px;display:none;}
 .season-body.open{display:block;}
 .ep-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eeece8;font-size:12px;}
 .ep-row:last-child{border-bottom:none;}
@@ -1043,9 +1043,7 @@ function renderDetail(e){
           </div>
         </div>
         <div class="season-body">
-          ${s.rating||s.favourite||s.notes?`<div style="display:flex;align-items:center;gap:12px;padding:8px 0 10px;border-bottom:${hasEps?'1px solid #eeece8':'none'};margin-bottom:${hasEps?'8px':'0'};">
-            ${s.notes?`<span style="font-size:12px;color:#777;font-style:italic;">${s.notes.replace(/\n/g,'<br>')}</span>`:''}
-          </div>`:''}
+          ${s.notes?`<div style="padding:4px 0 8px;${hasEps?'border-bottom:1px solid #eeece8;margin-bottom:6px;':''}"><span style="font-size:12px;color:#777;font-style:italic;">${s.notes.replace(/\n/g,'<br>')}</span></div>`:''}
           ${hasEps?s.episodes.map(ep=>`
             <div class="ep-row">
               <span class="ep-num">E${String(ep.ep).padStart(2,'0')}</span>
@@ -1469,10 +1467,10 @@ function readSeasons(existing){
     const rating=ratingEl?parseFloat(ratingEl.dataset.rating)||null:oldSeason.rating||null;
     const epDates=episodes.map(ep=>ep.date).filter(Boolean).sort();
     const derivedDate=epDates[epDates.length-1]||'';
-    const manualDate=row.querySelector('.ssn-date').value;
+    const manualDate=row.querySelector('.ssn-date')?.value||'';
     return {
       season:i+1,
-      status:row.querySelector('.ssn-status').value,
+      status:row.querySelector('.ssn-status')?.value||'completed',
       watch_date:manualDate||derivedDate,
       rating,
       favourite:row.querySelector('.ssn-fav')?.checked||false,
