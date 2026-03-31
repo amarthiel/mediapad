@@ -1043,8 +1043,8 @@ function renderDetail(e){
           </div>
         </div>
         <div class="season-body">
-          ${s.rating||s.favourite||s.notes?`<div style="display:flex;align-items:center;gap:12px;padding:8px 0 10px;border-bottom:${hasEps?'1px solid #eeece8':'none'};margin-bottom:${hasEps?'8px':'0'};">
-            ${s.notes?`<span style="font-size:12px;color:#777;font-style:italic;">${s.notes.replace(/\n/g,'<br>')}</span>`:''}
+          ${s.notes?`<div style="padding:8px 0 10px;${hasEps?'border-bottom:1px solid #eeece8;margin-bottom:8px;':''}">
+            <span style="font-size:12px;color:#777;font-style:italic;">${s.notes.replace(/\n/g,'<br>')}</span>
           </div>`:''}
           ${hasEps?s.episodes.map(ep=>`
             <div class="ep-row">
@@ -1563,8 +1563,8 @@ function confirmModal(){
     language:langs.length?langs:['English'],
     genres,
     tags,
-    progress_status:$('f-status').value,
-    favourite:$('f-fav').checked,
+    progress_status:($('f-status')||{value:'completed'}).value,
+    favourite:!!($('f-fav')?.checked),
     rating:ratingVal||null,
     review:($('f-review')||{value:''}).value.trim(),
     notes:($('f-notes')||{value:''}).value.trim(),
